@@ -1,0 +1,25 @@
+{
+  "name": "ibadah-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "build": "tsc",
+    "start": "node --env-file=.env dist/src/index.js",
+    "typecheck": "tsc --noEmit",
+    "import-ayat": "tsx --env-file=.env scripts/import-ayat.ts --write",
+    "ayat-dry": "tsx scripts/import-ayat.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "5.9"
+  }
+}
