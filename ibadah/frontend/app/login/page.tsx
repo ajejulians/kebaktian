@@ -2,12 +2,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { api } from '@/lib/api';
 import AuthShell from '@/components/AuthShell';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Field } from '@/components/ui/field';
+import { IconInput } from '@/components/ui/icon-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { Profile } from '@/lib/types';
 
@@ -23,6 +24,7 @@ export default function Login() {
   const [err, setErr] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   useEffect(() => {
     setNote(NOTES[new URLSearchParams(window.location.search).get('m') ?? ''] || '');
@@ -41,7 +43,7 @@ export default function Login() {
         setBusy(false);
         return setErr(NOTES[me.status]);
       }
-      router.replace('/petugas');
+      router.replace('/dashboard');
     } catch (e2) {
       await supabase.auth.signOut();
       setBusy(false);
@@ -50,16 +52,37 @@ export default function Login() {
   }
 
   return (
-    <AuthShell title="Masuk">
-      <p className="muted">Silakan masuk untuk mengelola kebaktian.</p>
-      <form onSubmit={submit} className="stack mt-6">
-        <div className="field"><Label htmlFor="email">Email</Label><Input id="email" name="email" type="email" required autoComplete="email" /></div>
-        <div className="field"><Label htmlFor="password">Password</Label><Input id="password" name="password" type="password" required autoComplete="current-password" /></div>
+    <AuthShell
+      eyebrow="PORTAL PELAYANAN"
+      title="Selamat datang kembali"
+      description="Masuk untuk melanjutkan pengelolaan kebaktian."
+      footer={<>Belum punya akun? <Link href="/register" className="font-semibold">Daftar sekarang</Link></>}
+    >
+      <form onSubmit={submit} className="flex flex-col gap-[22px]">
+        <Field label="Email" htmlFor="email" labelClassName="text-[13px]">
+          <IconInput id="email" name="email" type="email" icon={Mail} placeholder="nama@email.com" required autoComplete="email" />
+        </Field>
+        <Field label="Kata sandi" htmlFor="password" labelClassName="text-[13px]">
+          <IconInput
+            id="password" name="password" type={showPw ? 'text' : 'password'} icon={LockKeyhole}
+            placeholder="Masukkan kata sandi" required autoComplete="current-password"
+            trailing={
+              <button
+                type="button" onClick={() => setShowPw((v) => !v)} aria-pressed={showPw}
+                aria-label={showPw ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {showPw ? <EyeOff aria-hidden className="size-[18px]" /> : <Eye aria-hidden className="size-[18px]" />}
+              </button>
+            }
+          />
+        </Field>
         {note && <Alert variant="success"><AlertDescription>{note}</AlertDescription></Alert>}
         {err && <Alert variant="destructive"><AlertDescription>{err}</AlertDescription></Alert>}
-        <Button size="lg" className="w-full" disabled={busy}>{busy ? 'Memeriksa…' : 'Masuk'}</Button>
+        <Button size="xl" className="mt-1.5 w-full" disabled={busy}>
+          {busy ? 'Memeriksa…' : <>Masuk <ArrowRight /></>}
+        </Button>
       </form>
-      <p className="muted mt-6">Belum punya akun? <Link href="/register">Daftar</Link></p>
     </AuthShell>
   );
 }

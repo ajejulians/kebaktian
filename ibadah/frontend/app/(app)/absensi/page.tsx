@@ -1,14 +1,17 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, Download, Search } from 'lucide-react';
+import { CalendarDays, Check, Download, Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import { longDate, thisSunday, todayISO } from '@/lib/slides';
 import { useMe } from '@/components/AppShell';
 import Notice from '@/components/Notice';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { IconInput } from '@/components/ui/icon-input';
 import { Label } from '@/components/ui/label';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import PageHeader from '@/components/PageHeader';
+import { Avatar, CountChip, FilterTabs, Hint, Panel, PanelFooter, PanelHeader, SearchField, StatusPill } from '@/components/Panel';
+import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Mark, Msg, Rekap, Umat } from '@/lib/types';
 
@@ -58,66 +61,70 @@ function Attendance() {
   const pct = total ? Math.round((present / total) * 100) : 0;
 
   return (
-    <>
-      <div className="page-head">
-        <div><h1>Absensi Kebaktian</h1><p>{longDate(week)}</p></div>
-        <span className="spacer" />
-        <div className="field w-48">
-          <Label htmlFor="week">Tanggal kebaktian</Label>
-          <Input id="week" type="date" className="bg-card" value={week} max={todayISO()} onChange={(e) => e.target.value && setWeek(e.target.value)} />
-        </div>
-      </div>
-      <Notice msg={msg} />
-
-      <div className="split">
-        <div>
-          <div className="row mb-4">
-            <div className="relative min-w-56 flex-1">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="bg-card pl-9" placeholder="Cari nama atau nomor telepon…" value={q} onChange={(e) => setQ(e.target.value)} />
-            </div>
-            <div className="seg" role="group" aria-label="Saring kehadiran">
-              {(Object.keys(FILTERS) as (keyof typeof FILTERS)[]).map((f) => (
-                <button key={f} type="button" className={filter === f ? 'on' : ''} aria-pressed={filter === f} onClick={() => setFilter(f)}>{FILTERS[f]}</button>
-              ))}
-            </div>
+    <div className="flex flex-col gap-7">
+      <PageHeader
+        trail={['Ibadah', 'Absensi']}
+        title="Absensi Kebaktian"
+        description="Catat kehadiran umat dan pantau rekap kebaktian."
+        actions={
+          <div className="flex w-full flex-col gap-2 sm:w-[230px]">
+            <Label htmlFor="week" className="text-xs font-semibold text-fg-2">Tanggal kebaktian</Label>
+            <IconInput id="week" type="date" icon={CalendarDays} fieldSize="md" value={week} max={todayISO()} onChange={(e) => e.target.value && setWeek(e.target.value)} />
           </div>
+        }
+      />
+      <Notice msg={msg} className="my-0" />
 
-          {(!umat || !marks) && <div className="att-grid">{[0, 1, 2, 3].map((n) => <Skeleton key={n} className="h-14" />)}</div>}
-          {umat && marks && !umat.length && <div className="empty">Belum ada data umat. Admin dapat menambahkannya di menu Umat.</div>}
-          <div className="att-grid">
+      <div className="grid items-start gap-6 min-[1100px]:grid-cols-[minmax(0,1fr)_350px]">
+        <div className="flex flex-col gap-[18px]">
+          <Panel>
+            <PanelHeader title="Daftar umat" description="Centang nama umat yang hadir pada tanggal ini." aside={umat && <CountChip>{total} umat aktif</CountChip>}>
+              <SearchField aria-label="Cari umat" placeholder="Cari nama atau nomor telepon…" value={q} onChange={(e) => setQ(e.target.value)} />
+              <FilterTabs label="Saring kehadiran" options={FILTERS} value={filter} onChange={setFilter} />
+            </PanelHeader>
+
+            {(!umat || !marks) && [0, 1, 2, 3].map((n) => <div key={n} className="border-t px-6 py-4"><Skeleton className="h-10" /></div>)}
+            {umat && marks && !umat.length && <div className="border-t p-6"><div className="empty">Belum ada data umat. Admin dapat menambahkannya di menu Umat.</div></div>}
             {umat && marks && list.map((u) => {
               const m = marks[u.id];
               return (
-                <button key={u.id} type="button" className={'att' + (m ? ' on' : '')} onClick={() => toggle(u)} aria-pressed={!!m}>
-                  <span className="tick">{m && <Check className="size-3.5" strokeWidth={3} />}</span>
-                  <span className="who">
-                    <strong>{u.nama}</strong>
-                    <small>{[u.telepon, u.alamat].filter(Boolean).join(' · ') || 'Tanpa kontak'}</small>
-                    {m && <small className="by">Dicatat {m.marked_by} · {fmtTime(m.marked_at)}</small>}
+                <button
+                  key={u.id} type="button" onClick={() => toggle(u)} aria-pressed={!!m}
+                  className={cn('flex w-full items-center gap-3.5 border-t px-5 py-4 text-left outline-none transition-colors hover:bg-[#F7F9FA] focus-visible:bg-[#F7F9FA] focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset sm:px-6', m && 'bg-[#F6FBF8]')}
+                >
+                  <span className={cn('grid size-[18px] shrink-0 place-items-center rounded-[3px] border', m ? 'border-navy bg-navy text-white' : 'border-[#B8C5CD] bg-card')}>
+                    {m && <Check aria-hidden className="size-3" strokeWidth={3} />}
                   </span>
+                  <Avatar name={u.nama} />
+                  <span className="flex min-w-0 flex-1 flex-col gap-[5px]">
+                    <strong className="truncate text-[13px] font-semibold">{u.nama}</strong>
+                    <span className="truncate text-[11px] text-muted-foreground">{[u.telepon, u.alamat].filter(Boolean).join('  ·  ') || 'Tanpa kontak'}</span>
+                    {m && <span className="truncate text-[11px] text-[#2F6B44]">Dicatat {m.marked_by} · {fmtTime(m.marked_at)}</span>}
+                  </span>
+                  <StatusPill tone={m ? 'ok' : 'muted'}>{m ? 'Hadir' : 'Belum hadir'}</StatusPill>
                 </button>
               );
             })}
-          </div>
-          {umat && marks && !!umat.length && !list.length && <div className="empty">Tidak ada umat yang cocok.</div>}
+            {umat && marks && !!umat.length && !list.length && <div className="border-t p-6"><div className="empty">Tidak ada umat yang cocok.</div></div>}
+            <PanelFooter><span>Menampilkan {list.length} dari {total} umat</span><span>Perubahan dicatat otomatis</span></PanelFooter>
+          </Panel>
+          <Hint>Setiap perubahan kehadiran tercatat di log audit.</Hint>
         </div>
 
-        <aside className="side-col gap-4">
-          <Card>
-            <CardHeader><CardTitle>Kehadiran</CardTitle></CardHeader>
-            <CardContent>
-              <div className="font-serif text-6xl leading-none font-medium tabular-nums">{present}<span className="text-2xl text-muted-foreground"> / {total}</span></div>
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-                <div className="h-full bg-success transition-[width] duration-300" style={{ width: `${pct}%` }} />
-              </div>
-              <CardDescription className="mt-3">{pct}% umat aktif hadir. Setiap perubahan tercatat di log audit.</CardDescription>
-            </CardContent>
-          </Card>
+        <aside className="flex flex-col gap-[18px] min-[1100px]:sticky min-[1100px]:top-6">
+          <Panel className="flex flex-col gap-4 p-[22px]">
+            <div className="flex items-center justify-between"><h2 className="m-0 text-[15px] font-bold">Kehadiran</h2><Users aria-hidden className="size-[17px] text-muted-foreground" /></div>
+            <p className="text-xs text-muted-foreground">{longDate(week)}</p>
+            <div className="flex items-baseline gap-1.5"><span className="text-[34px] leading-none font-bold text-navy tabular-nums">{present}</span><span className="text-[13px] text-muted-foreground">/ {total} umat</span></div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-[#E9EFF2]" role="progressbar" aria-label="Persentase hadir" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+              <div className="h-full rounded-full bg-success transition-[width] duration-300" style={{ width: `${pct}%` }} />
+            </div>
+            <p className="text-xs text-muted-foreground">{pct}% umat aktif hadir</p>
+          </Panel>
           {me?.role === 'admin' && <RekapCard umat={umat ?? []} />}
         </aside>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -141,22 +148,27 @@ function RekapCard({ umat }: { umat: Umat[] }) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Rekap 8 minggu</CardTitle>
-        <CardAction><Button variant="outline" size="sm" onClick={download} disabled={!r?.dates.length}><Download />CSV</Button></CardAction>
-      </CardHeader>
-      <CardContent>
-        {!r && <Skeleton className="h-28" />}
-        {r && !r.dates.length && <p className="muted">Belum ada absensi tercatat.</p>}
-        {r?.dates.map((d, i) => (
-          <div key={d} className="flex justify-between border-b py-2 text-sm last:border-b-0">
-            <span>{new Date(d + 'T00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-            <strong className="tabular-nums">{r.counts[i]} hadir</strong>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
+    <Panel className="flex flex-col gap-[18px] p-[22px]">
+      <div className="flex items-center justify-between">
+        <h2 className="m-0 text-[15px] font-bold">Rekap 8 minggu</h2>
+        <Button variant="outline" size="sm" onClick={download} disabled={!r?.dates.length}><Download />CSV</Button>
+      </div>
+      <Separator />
+      {!r && <Skeleton className="h-28" />}
+      {r && !r.dates.length && (
+        <div className="flex flex-col items-center gap-2 px-2 pt-1 pb-3 text-center">
+          <span className="grid size-[42px] place-items-center rounded-full bg-[#F1F5F7]"><CalendarDays aria-hidden className="size-[18px] text-[#6F8593]" /></span>
+          <p className="text-xs font-semibold text-fg-2">Belum ada data absensi</p>
+          <p className="text-[11px] text-muted-foreground">Rekap akan muncul setelah kehadiran dicatat.</p>
+        </div>
+      )}
+      {r?.dates.map((d, i) => (
+        <div key={d} className="flex justify-between border-b py-2 text-sm last:border-b-0">
+          <span>{new Date(d + 'T00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          <strong className="tabular-nums">{r.counts[i]} hadir</strong>
+        </div>
+      ))}
+    </Panel>
   );
 }
 

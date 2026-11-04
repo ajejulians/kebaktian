@@ -1,10 +1,11 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Source_Serif_4, Public_Sans } from 'next/font/google';
+import { Inter, Noto_Serif_SC } from 'next/font/google';
 
-const serif = Source_Serif_4({ subsets: ['latin'], variable: '--nf-serif', weight: ['500', '600'] });
-const sans = Public_Sans({ subsets: ['latin'], variable: '--nf-sans' });
+const sans = Inter({ subsets: ['latin'], variable: '--nf-sans' });
+// Hanya untuk aksara Mandarin; teks lain tetap Inter.
+const han = Noto_Serif_SC({ weight: ['400', '600'], variable: '--nf-han', preload: false });
 
 export const metadata: Metadata = {
   title: 'Operasional Kebaktian',
@@ -12,5 +13,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return <html lang="id" className={`${serif.variable} ${sans.variable}`}><body>{children}</body></html>;
+  return <html lang="id" className={`${sans.variable} ${han.variable}`}><body>{children}</body></html>;
 }

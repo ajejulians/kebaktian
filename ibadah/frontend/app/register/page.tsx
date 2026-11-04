@@ -2,10 +2,11 @@
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ArrowRight, LockKeyhole, Mail, UserRound } from 'lucide-react';
 import AuthShell from '@/components/AuthShell';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Field } from '@/components/ui/field';
+import { IconInput } from '@/components/ui/icon-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function Register() {
@@ -33,16 +34,27 @@ export default function Register() {
   }
 
   return (
-    <AuthShell title="Daftar">
-      <p className="muted">Akun baru harus disetujui admin sebelum bisa dipakai.</p>
-      <form onSubmit={submit} className="stack mt-6">
-        <div className="field"><Label htmlFor="name">Nama</Label><Input id="name" name="name" required autoComplete="name" /></div>
-        <div className="field"><Label htmlFor="email">Email</Label><Input id="email" name="email" type="email" required autoComplete="email" /></div>
-        <div className="field"><Label htmlFor="password">Password</Label><Input id="password" name="password" type="password" minLength={8} required autoComplete="new-password" /><p className="muted">Minimal 8 karakter.</p></div>
+    <AuthShell
+      eyebrow="PORTAL PELAYANAN"
+      title="Buat akun baru"
+      description="Akun baru harus disetujui admin sebelum bisa dipakai."
+      footer={<>Sudah punya akun? <Link href="/login" className="font-semibold">Masuk</Link></>}
+    >
+      <form onSubmit={submit} className="flex flex-col gap-[22px]">
+        <Field label="Nama" htmlFor="name" labelClassName="text-[13px]">
+          <IconInput id="name" name="name" icon={UserRound} placeholder="Nama lengkap" required autoComplete="name" />
+        </Field>
+        <Field label="Email" htmlFor="email" labelClassName="text-[13px]">
+          <IconInput id="email" name="email" type="email" icon={Mail} placeholder="nama@email.com" required autoComplete="email" />
+        </Field>
+        <Field label="Kata sandi" htmlFor="password" labelClassName="text-[13px]" hint="Minimal 8 karakter.">
+          <IconInput id="password" name="password" type="password" icon={LockKeyhole} placeholder="Buat kata sandi" minLength={8} required autoComplete="new-password" />
+        </Field>
         {err && <Alert variant="destructive"><AlertDescription>{err}</AlertDescription></Alert>}
-        <Button size="lg" className="w-full" disabled={busy}>{busy ? 'Mengirim…' : 'Daftar'}</Button>
+        <Button size="xl" className="mt-1.5 w-full" disabled={busy}>
+          {busy ? 'Mengirim…' : <>Daftar <ArrowRight /></>}
+        </Button>
       </form>
-      <p className="muted mt-6">Sudah punya akun? <Link href="/login">Masuk</Link></p>
     </AuthShell>
   );
 }

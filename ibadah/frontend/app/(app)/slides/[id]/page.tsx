@@ -2,7 +2,7 @@
 import { use, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, BookOpen, Copy, ImageUp, Play, Plus, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Copy, ImageUp, Info, Pencil, Play, Plus, Save, Trash2, X } from 'lucide-react';
 import SlideView from '@/components/SlideView';
 import AyatPicker from '@/components/AyatPicker';
 import Notice from '@/components/Notice';
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { api, uploadBackground, youtubeId } from '@/lib/api';
@@ -32,12 +33,13 @@ function Editor({ id }: { id: string }) {
   const [picker, setPicker] = useState(false);
   const [drag, setDrag] = useState<number | null>(null);
   const [over, setOver] = useState<number | null>(null);
+  const [base, setBase] = useState('');
   const [found, setFound] = useState<Assignment | null | undefined>(undefined); // undefined = sedang memuat
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api<Slideshow>(`/api/slideshows/${id}`)
-      .then((d) => { setTitle(d.title); setSlides(d.slides); setLoaded(true); })
+      .then((d) => { setTitle(d.title); setSlides(d.slides); setBase(JSON.stringify({ title: d.title, slides: d.slides })); setLoaded(true); })
       .catch((e: Error) => setMsg({ err: e.message }));
   }, [id]);
 
@@ -96,6 +98,7 @@ function Editor({ id }: { id: string }) {
     setSaving(true);
     try {
       await api(`/api/slideshows/${id}`, { method: 'PUT', body: { title, slides } });
+      setBase(JSON.stringify({ title, slides }));
       setMsg({ ok: 'Slideshow tersimpan' });
     } catch (e) { setMsg({ err: (e as Error).message }); }
     setSaving(false);
@@ -107,37 +110,55 @@ function Editor({ id }: { id: string }) {
     router.push('/slides');
   }
 
+  const dirty = loaded && JSON.stringify({ title, slides }) !== base;
   const sameRoster = !!(found && cur?.roster && JSON.stringify(cur.roster) === JSON.stringify(toRoster(found)));
 
   return (
-    <>
-      <Button asChild variant="link" className="h-auto px-0 text-muted-foreground"><Link href="/slides"><ArrowLeft />Semua slideshow</Link></Button>
-      <div className="page-head mt-2">
-        <div className="field min-w-56 flex-1">
-          <Label htmlFor="title" className="sr-only">Judul slideshow</Label>
-          <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Judul slideshow"
-            className="h-11 border-transparent bg-transparent px-2 font-serif text-2xl font-semibold shadow-none hover:border-input md:text-2xl" />
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-5">
+        <Link href="/slides" className="inline-flex w-fit items-center gap-2 text-xs font-semibold text-muted-foreground no-underline hover:text-foreground"><ArrowLeft className="size-[15px]" />Semua slideshow</Link>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <div className="relative flex max-w-xl items-center">
+              <Label htmlFor="title" className="sr-only">Judul slideshow</Label>
+              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Judul slideshow"
+                className="h-11 border-transparent bg-transparent px-0 pr-8 text-2xl font-bold shadow-none hover:border-input hover:px-3 focus-visible:px-3 md:text-2xl" />
+              <Pencil aria-hidden className="pointer-events-none absolute right-2 size-[15px] text-muted-foreground" />
+            </div>
+            <p className="text-xs text-muted-foreground" aria-live="polite">{dirty ? 'Perubahan belum disimpan' : 'Semua perubahan tersimpan'}</p>
+          </div>
+          <div className="flex gap-2.5">
+            <Button asChild variant="outline" size="md"><Link href={`/present/${id}`}><Play />Tampilkan</Link></Button>
+            <Button size="md" onClick={save} disabled={saving}><Save />{saving ? 'Menyimpan…' : 'Simpan'}</Button>
+          </div>
         </div>
-        <Button variant="outline" onClick={() => add('text')}><Plus />Slide</Button>
-        <Button variant="outline" onClick={() => setPicker(true)}><BookOpen />Ayat</Button>
-        <Button asChild variant="outline"><Link href={`/present/${id}`}><Play />Tampilkan</Link></Button>
-        <Button variant="gold" onClick={save} disabled={saving}>{saving ? 'Menyimpan…' : 'Simpan'}</Button>
+        <Separator />
       </div>
-      <Notice msg={msg} />
+      <Notice msg={msg} className="my-0" />
 
       <div className="editor">
         <div className="ed-main">
           {!loaded && <Skeleton className="aspect-video w-full" />}
           {loaded && !cur && <div className="empty">Belum ada slide. Tambahkan dari panel di sebelah kanan.</div>}
-          {cur && <div className="canvas"><SlideView slide={cur} /></div>}
+          {cur && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-baseline justify-between"><h2 className="m-0 text-[13px] font-bold">Pratinjau slide</h2><span className="text-xs text-muted-foreground">{sel + 1} / {slides.length}</span></div>
+              <div className="canvas"><SlideView slide={cur} /></div>
+              <p className="flex items-center gap-2 text-[11px] text-muted-foreground"><Info aria-hidden className="size-[15px] shrink-0" />Pratinjau diperbarui saat konten slide diubah.</p>
+            </div>
+          )}
         </div>
 
         <div className="ed-props">
           {cur && (
-            <Card>
+            <Card className="rounded-lg py-5 shadow-none">
               <CardContent className="stack">
+                <div className="flex flex-col gap-1">
+                  <h2 className="m-0 text-[15px] font-bold">Edit slide {sel + 1}</h2>
+                  <p className="text-[11px] text-muted-foreground">Jenis: {TYPE_LABEL[cur.type]}</p>
+                </div>
+                <Separator />
                 <div className="row">
-                  <span className="slide-num">{sel + 1}</span>
                   <div className="seg" role="group" aria-label="Jenis slide">
                     {(Object.keys(TYPE_LABEL) as SlideType[]).map((t) => (
                       <button key={t} type="button" className={cur.type === t ? 'on' : ''} aria-pressed={cur.type === t}
@@ -250,13 +271,13 @@ function Editor({ id }: { id: string }) {
               </div>
             </div>
           ))}
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-2 gap-1.5 max-[900px]:w-52 max-[900px]:shrink-0">
             <Button variant="outline" size="xs" onClick={() => add('text')}>+ Teks</Button>
             <Button variant="outline" size="xs" onClick={() => add('youtube')}>+ Video</Button>
             <Button variant="outline" size="xs" onClick={() => add('roster')}>+ Petugas</Button>
             <Button variant="outline" size="xs" onClick={() => setPicker(true)}>+ Ayat</Button>
           </div>
-          <p className="muted m-0 px-1 text-xs">Seret thumbnail untuk mengubah urutan.</p>
+          <p className="muted m-0 px-1 text-xs max-[900px]:w-40 max-[900px]:shrink-0">Seret thumbnail untuk mengubah urutan.</p>
         </aside>
       </div>
 
@@ -266,7 +287,7 @@ function Editor({ id }: { id: string }) {
         <span className="spacer" />
         <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={remove}><Trash2 />Hapus slideshow</Button>
       </div>
-    </>
+    </div>
   );
 }
 

@@ -2,15 +2,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import Papa from 'papaparse';
 import { readSheet } from 'read-excel-file/browser';
-import { FileUp, Search } from 'lucide-react';
+import { Pencil, Plus, Upload } from 'lucide-react';
 import { api } from '@/lib/api';
 import Notice from '@/components/Notice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Field } from '@/components/ui/field';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import PageHeader from '@/components/PageHeader';
+import { Avatar, CountChip, Hint, Panel, PanelFooter, PanelHeader, SearchField, StatusPill } from '@/components/Panel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -57,6 +57,8 @@ function Page() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+  const goForm = () => { formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => document.getElementById('u-nama')?.focus({ preventScroll: true }), 300); };
 
   const load = useCallback(() => api<Umat[]>('/api/umat?all=1').then(setList).catch((e: Error) => { setList([]); setMsg({ err: e.message }); }), []);
   useEffect(() => { load(); }, [load]);
@@ -103,107 +105,98 @@ function Page() {
   const aktifCount = list?.filter((u) => u.aktif).length ?? 0;
   const template = 'data:text/csv;charset=utf-8,' + encodeURIComponent('﻿Nama,Telepon,Alamat\nBudi Santoso,081234567890,Jl. Merdeka No. 1\n');
 
+  const COLS = 'md:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_96px_auto]';
+  const mini = 'h-[34px] rounded-[5px] px-2.5 text-[11px]';
+
   return (
-    <>
-      <div className="page-head">
-        <div><h1>Data Umat</h1><p>Kelola daftar umat yang dipakai untuk absensi mingguan.</p></div>
-        <span className="spacer" />
-        {list && <Badge variant="ok">{aktifCount} aktif</Badge>}
-      </div>
-      <Notice msg={msg} />
+    <div className="flex flex-col gap-7">
+      <PageHeader
+        trail={['Administrasi', 'Umat']}
+        title="Data Umat"
+        description="Kelola data umat yang terdaftar untuk kebutuhan pelayanan."
+        actions={<Button size="md" onClick={() => { setEditId(null); setF(empty); goForm(); }}><Plus />Tambah umat</Button>}
+      />
+      <Notice msg={msg} className="my-0" />
 
-      <div className="split">
-        <div>
-          <div className="relative mb-4">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="bg-card pl-9" placeholder="Cari nama, telepon, atau alamat…" value={q} onChange={(e) => setQ(e.target.value)} />
-          </div>
-          {!list && [0, 1, 2, 3].map((n) => <Skeleton key={n} className="mb-2 h-12" />)}
-          {list && !list.length && <div className="empty">Belum ada umat. Tambahkan manual atau impor dari Excel/CSV.</div>}
-          {!!shown.length && (
-            <Card className="py-0">
-              <Table>
-                <TableHeader><TableRow><TableHead className="pl-5">Nama</TableHead><TableHead>Telepon</TableHead><TableHead>Alamat</TableHead><TableHead /></TableRow></TableHeader>
-                <TableBody>
-                  {shown.map((u) => (
-                    <TableRow key={u.id} className={u.aktif ? '' : 'opacity-55'}>
-                      <TableCell className="pl-5"><strong>{u.nama}</strong> {!u.aktif && <Badge variant="secondary">nonaktif</Badge>}</TableCell>
-                      <TableCell className="tabular-nums">{u.telepon || '—'}</TableCell>
-                      <TableCell className="max-w-64 truncate">{u.alamat || '—'}</TableCell>
-                      <TableCell className="pr-5 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => { setEditId(u.id); setF({ nama: u.nama, telepon: u.telepon ?? '', alamat: u.alamat ?? '' }); setMsg(null); }}>Edit</Button>
-                        {u.aktif
-                          ? <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setAktif(u, false)}>Nonaktifkan</Button>
-                          : <Button variant="ghost" size="sm" onClick={() => setAktif(u, true)}>Aktifkan</Button>}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-          )}
-          {list && !!list.length && !shown.length && <div className="empty">Tidak ada yang cocok.</div>}
+      <Panel>
+        <PanelHeader title="Daftar umat" description="Kelola daftar umat yang dipakai untuk absensi mingguan." aside={list && <CountChip>{aktifCount} aktif · {list.length} umat</CountChip>}>
+          <SearchField className="w-full sm:w-[400px]" aria-label="Cari umat" placeholder="Cari nama, telepon, atau alamat…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </PanelHeader>
+
+        <div className={`hidden gap-5 border-t bg-[#F8FAFA] px-6 py-3.5 text-[10px] font-bold tracking-[0.08em] text-[#7A8B96] md:grid ${COLS}`}>
+          <span>NAMA UMAT</span><span>NOMOR TELEPON</span><span>ALAMAT</span><span>STATUS</span><span className="w-[170px] text-right">AKSI</span>
         </div>
+        {!list && [0, 1, 2, 3].map((n) => <div key={n} className="border-t px-6 py-4"><Skeleton className="h-10" /></div>)}
+        {list && !list.length && <div className="border-t p-6"><div className="empty">Belum ada umat. Tambahkan manual atau impor dari Excel/CSV.</div></div>}
+        {shown.map((u) => (
+          <div key={u.id} className={`grid items-center gap-x-5 gap-y-2 border-t px-5 py-4 sm:px-6 ${COLS} ${u.aktif ? '' : 'opacity-60'}`}>
+            <div className="flex min-w-0 items-center gap-3"><Avatar name={u.nama} className="size-9 text-[13px]" /><strong className="truncate text-[13px] font-semibold">{u.nama}</strong></div>
+            <span className="truncate text-xs text-[#4F6573] tabular-nums"><span className="text-muted-foreground md:hidden">Telepon: </span>{u.telepon || '—'}</span>
+            <span className="truncate text-xs text-[#4F6573]"><span className="text-muted-foreground md:hidden">Alamat: </span>{u.alamat || '—'}</span>
+            <span><StatusPill tone={u.aktif ? 'ok' : 'muted'}>{u.aktif ? 'Aktif' : 'Nonaktif'}</StatusPill></span>
+            <div className="flex gap-1.5 md:justify-end">
+              <Button variant="outline" size="sm" className={mini} onClick={() => { setEditId(u.id); setF({ nama: u.nama, telepon: u.telepon ?? '', alamat: u.alamat ?? '' }); setMsg(null); goForm(); }}><Pencil className="size-[13px]" />Edit</Button>
+              {u.aktif
+                ? <Button variant="ghost" size="sm" className={`${mini} text-[#A84C47] hover:bg-[#FBEDEA] hover:text-[#A84C47]`} onClick={() => setAktif(u, false)}>Nonaktifkan</Button>
+                : <Button variant="ghost" size="sm" className={mini} onClick={() => setAktif(u, true)}>Aktifkan</Button>}
+            </div>
+          </div>
+        ))}
+        {list && !!list.length && !shown.length && <div className="border-t p-6"><div className="empty">Tidak ada yang cocok.</div></div>}
+        <PanelFooter><span>Menampilkan {shown.length} dari {list?.length ?? 0} umat</span></PanelFooter>
+      </Panel>
 
-        <aside className="side-col gap-4">
-          <Card>
-            <CardHeader><CardTitle>{editId ? 'Edit umat' : 'Tambah umat'}</CardTitle></CardHeader>
-            <CardContent>
-              <form onSubmit={save} className="stack">
-                <div className="field"><Label htmlFor="u-nama">Nama umat <span className="text-destructive">*</span></Label>
-                  <Input id="u-nama" value={f.nama} onChange={(e) => setF({ ...f, nama: e.target.value })} required /></div>
-                <div className="field"><Label htmlFor="u-tel">Nomor telepon <span className="font-normal text-muted-foreground">(opsional)</span></Label>
-                  <Input id="u-tel" value={f.telepon} onChange={(e) => setF({ ...f, telepon: e.target.value })} inputMode="tel" placeholder="08xxxxxxxxxx" /></div>
-                <div className="field"><Label htmlFor="u-alamat">Alamat <span className="font-normal text-muted-foreground">(opsional)</span></Label>
-                  <Textarea id="u-alamat" className="min-h-18" value={f.alamat} onChange={(e) => setF({ ...f, alamat: e.target.value })} /></div>
-                <div className="row">
-                  <Button variant="gold">{editId ? 'Simpan perubahan' : 'Tambah umat'}</Button>
-                  {editId && <Button type="button" variant="outline" onClick={() => { setEditId(null); setF(empty); }}>Batal</Button>}
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+      <Hint>Data umat digunakan untuk pencatatan kehadiran kebaktian.</Hint>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Impor Excel / CSV</CardTitle>
-              <CardDescription>
-                Baris pertama berisi header <strong>Nama</strong>, <strong>Telepon</strong>, <strong>Alamat</strong> (urutan bebas; hanya Nama yang wajib).
-                Duplikat (nama + telepon sama) dilewati. <a href={template} download="template-umat.csv">Unduh template</a>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="stack">
-              <input ref={fileRef} type="file" accept=".xlsx,.csv,text/csv" hidden onChange={(e) => pick(e.target.files?.[0])} />
-              <div><Button variant="outline" onClick={() => fileRef.current?.click()}><FileUp />Pilih file…</Button></div>
+      <div ref={formRef} className="grid items-start gap-6 min-[1100px]:grid-cols-[minmax(0,1fr)_350px]">
+        <Panel className="p-[22px]">
+          <form onSubmit={save} className="flex flex-col gap-3.5">
+            <h2 className="m-0 text-[15px] font-bold">{editId ? 'Edit umat' : 'Tambah umat'}</h2>
+            <div className="grid gap-3.5 sm:grid-cols-2">
+              <Field label="Nama umat *" htmlFor="u-nama"><Input id="u-nama" fieldSize="md" value={f.nama} onChange={(e) => setF({ ...f, nama: e.target.value })} placeholder="Masukkan nama" required /></Field>
+              <Field label="Nomor telepon (opsional)" htmlFor="u-tel"><Input id="u-tel" fieldSize="md" value={f.telepon} onChange={(e) => setF({ ...f, telepon: e.target.value })} inputMode="tel" placeholder="08xxxxxxxxxx" /></Field>
+            </div>
+            <Field label="Alamat (opsional)" htmlFor="u-alamat"><Textarea id="u-alamat" className="min-h-14" value={f.alamat} onChange={(e) => setF({ ...f, alamat: e.target.value })} placeholder="Masukkan alamat" /></Field>
+            <div className="flex flex-wrap gap-2.5">
+              <Button size="md">{editId ? 'Simpan perubahan' : 'Tambah umat'}</Button>
+              {editId && <Button type="button" variant="outline" size="md" onClick={() => { setEditId(null); setF(empty); }}>Batal</Button>}
+            </div>
+          </form>
+        </Panel>
 
-              {preview && (
-                <div className="stack gap-3">
-                  <Alert variant="success"><AlertDescription><span><strong>{fileName}</strong>: {preview.length} baris siap diimpor.</span></AlertDescription></Alert>
-                  <div className="rounded-md border">
-                    <Table className="text-xs">
-                      <TableHeader><TableRow><TableHead>Nama</TableHead><TableHead>Telepon</TableHead><TableHead>Alamat</TableHead></TableRow></TableHeader>
-                      <TableBody>{preview.slice(0, 5).map((r, i) => <TableRow key={i}><TableCell>{r.nama || <em className="text-destructive">kosong</em>}</TableCell><TableCell>{r.telepon}</TableCell><TableCell className="max-w-32 truncate">{r.alamat}</TableCell></TableRow>)}</TableBody>
-                    </Table>
-                  </div>
-                  {preview.length > 5 && <p className="muted">…dan {preview.length - 5} baris lainnya</p>}
-                  <div className="row">
-                    <Button variant="gold" disabled={busy || !preview.length} onClick={doImport}>{busy ? 'Mengimpor…' : `Impor ${preview.length} umat`}</Button>
-                    <Button variant="outline" onClick={() => setPreview(null)}>Batal</Button>
-                  </div>
-                </div>
-              )}
+        <Panel className="flex flex-col gap-3 p-[22px]">
+          <h2 className="m-0 text-[15px] font-bold">Impor Excel / CSV</h2>
+          <p className="text-xs leading-relaxed text-muted-foreground">Gunakan kolom Nama, Telepon, Alamat. Hanya Nama yang wajib; duplikat nama dan telepon dilewati.</p>
+          <a href={template} download="template-umat.csv" className="w-fit text-xs font-semibold">Unduh template</a>
+          <input ref={fileRef} type="file" accept=".xlsx,.csv,text/csv" hidden onChange={(e) => pick(e.target.files?.[0])} />
+          <Button variant="outline" size="md" className="w-fit" onClick={() => fileRef.current?.click()}><Upload />Pilih file</Button>
 
-              {result && (
-                <div>
-                  <Alert variant="success"><AlertDescription><span>Berhasil menambah <strong>{result.created}</strong> umat. {result.duplicates > 0 && <>{result.duplicates} duplikat dilewati. </>}{result.invalid.length > 0 && <>{result.invalid.length} baris ditolak.</>}</span></AlertDescription></Alert>
-                  {result.invalid.slice(0, 10).map((x) => <p key={x.baris} className="muted mt-1">Baris {x.baris}: {x.alasan}</p>)}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </aside>
+          {preview && (
+            <div className="flex flex-col gap-3">
+              <Alert variant="success"><AlertDescription><span><strong>{fileName}</strong>: {preview.length} baris siap diimpor.</span></AlertDescription></Alert>
+              <div className="rounded-md border">
+                <Table className="text-xs">
+                  <TableHeader><TableRow><TableHead>Nama</TableHead><TableHead>Telepon</TableHead><TableHead>Alamat</TableHead></TableRow></TableHeader>
+                  <TableBody>{preview.slice(0, 5).map((r, i) => <TableRow key={i}><TableCell>{r.nama || <em className="text-destructive">kosong</em>}</TableCell><TableCell>{r.telepon}</TableCell><TableCell className="max-w-32 truncate">{r.alamat}</TableCell></TableRow>)}</TableBody>
+                </Table>
+              </div>
+              {preview.length > 5 && <p className="text-xs text-muted-foreground">…dan {preview.length - 5} baris lainnya</p>}
+              <div className="flex flex-wrap gap-2">
+                <Button size="md" disabled={busy || !preview.length} onClick={doImport}>{busy ? 'Mengimpor…' : `Impor ${preview.length} umat`}</Button>
+                <Button variant="outline" size="md" onClick={() => setPreview(null)}>Batal</Button>
+              </div>
+            </div>
+          )}
+
+          {result && (
+            <div className="flex flex-col gap-1">
+              <Alert variant="success"><AlertDescription><span>Berhasil menambah <strong>{result.created}</strong> umat. {result.duplicates > 0 && <>{result.duplicates} duplikat dilewati. </>}{result.invalid.length > 0 && <>{result.invalid.length} baris ditolak.</>}</span></AlertDescription></Alert>
+              {result.invalid.slice(0, 10).map((x) => <p key={x.baris} className="text-xs text-muted-foreground">Baris {x.baris}: {x.alasan}</p>)}
+            </div>
+          )}
+        </Panel>
       </div>
-    </>
+    </div>
   );
 }
 
