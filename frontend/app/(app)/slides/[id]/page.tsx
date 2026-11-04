@@ -1,5 +1,5 @@
 'use client';
-import { use, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { use, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Copy, ImageUp, Info, Pencil, Play, Plus, Save, Trash2, X } from 'lucide-react';
@@ -20,6 +20,7 @@ import type { Assignment, AyatSnap, Msg, Roster, Slide, SlideType, Slideshow } f
 
 const TYPE_LABEL: Record<SlideType, string> = { text: 'Teks', youtube: 'YouTube', roster: 'Petugas', ayat: 'Ayat' };
 const toRoster = (a: Assignment): Roster => ({ mc: a.mc, prayers: a.prayers, scripture: a.scripture, jiangdao: a.jiangdao });
+const emptyRoster = (): Roster => ({ mc: '', prayers: ['', '', ''], scripture: '', jiangdao: '' });
 
 function Editor({ id }: { id: string }) {
   const router = useRouter();
@@ -35,6 +36,9 @@ function Editor({ id }: { id: string }) {
   const [over, setOver] = useState<number | null>(null);
   const [base, setBase] = useState('');
   const [found, setFound] = useState<Assignment | null | undefined>(undefined); // undefined = sedang memuat
+  const [rosterError, setRosterError] = useState('');
+  const [rosterForm, setRosterForm] = useState<Roster>(emptyRoster);
+  const [savingRoster, setSavingRoster] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -45,15 +49,19 @@ function Editor({ id }: { id: string }) {
 
   const cur: Slide | undefined = slides[sel];
   const rosterDate = cur?.type === 'roster' ? cur.date : undefined;
+  const rosterDateRef = useRef(rosterDate);
+  rosterDateRef.current = rosterDate;
 
   // Tarik data petugas sesuai tanggal pada slide petugas yang sedang dipilih.
   useEffect(() => {
+    setFound(undefined);
+    setRosterError('');
+    setRosterForm(emptyRoster());
     if (!rosterDate) return;
     let alive = true;
-    setFound(undefined);
     api<Assignment | null>(`/api/assignments?week=${rosterDate}`)
       .then((a) => alive && setFound(a))
-      .catch(() => alive && setFound(null));
+      .catch((e: Error) => { if (alive) setRosterError(e.message); });
     return () => { alive = false; };
   }, [rosterDate]);
 
@@ -104,6 +112,22 @@ function Editor({ id }: { id: string }) {
     setSaving(false);
   }
 
+  async function saveRoster(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!rosterDate || savingRoster) return;
+    const date = rosterDate;
+    const target = cur;
+    setSavingRoster(true);
+    setRosterError('');
+    try {
+      const saved = await api<Assignment>('/api/assignments', { method: 'PUT', body: { week_date: date, ...rosterForm } });
+      setSlides((current) => current.map((slide) => slide === target ? { ...slide, roster: toRoster(saved) } : slide));
+      if (rosterDateRef.current === date) setFound(saved);
+      setMsg({ ok: 'Petugas tersimpan untuk tanggal ini. Simpan slideshow untuk menyimpan perubahan slide.' });
+    } catch (err) { setRosterError((err as Error).message); }
+    finally { setSavingRoster(false); }
+  }
+
   async function remove() {
     if (!confirm('Hapus slideshow ini?')) return;
     await api(`/api/slideshows/${id}`, { method: 'DELETE' });
@@ -136,10 +160,18 @@ function Editor({ id }: { id: string }) {
       </div>
       <Notice msg={msg} className="my-0" />
 
+      <div className="flex flex-wrap items-center gap-2" aria-label="Tambah slide">
+        <strong className="mr-1 text-sm">Tambah slide</strong>
+        <Button variant="outline" size="sm" disabled={!loaded} onClick={() => add('text')}><Plus />Teks</Button>
+        <Button variant="outline" size="sm" disabled={!loaded} onClick={() => add('youtube')}><Plus />Video</Button>
+        <Button variant="outline" size="sm" disabled={!loaded} onClick={() => add('roster')}><Plus />Petugas</Button>
+        <Button variant="outline" size="sm" disabled={!loaded} onClick={() => setPicker(true)}><Plus />Ayat</Button>
+      </div>
+
       <div className="editor">
         <div className="ed-main">
           {!loaded && <Skeleton className="aspect-video w-full" />}
-          {loaded && !cur && <div className="empty">Belum ada slide. Tambahkan dari panel di sebelah kanan.</div>}
+          {loaded && !cur && <div className="empty">Belum ada slide. Pilih jenis slide pada bagian Tambah slide di atas.</div>}
           {cur && (
             <div className="flex flex-col gap-3">
               <div className="flex items-baseline justify-between"><h2 className="m-0 text-[13px] font-bold">Pratinjau slide</h2><span className="text-xs text-muted-foreground">{sel + 1} / {slides.length}</span></div>
@@ -158,21 +190,10 @@ function Editor({ id }: { id: string }) {
                   <p className="text-[11px] text-muted-foreground">Jenis: {TYPE_LABEL[cur.type]}</p>
                 </div>
                 <Separator />
-                <div className="row">
-                  <div className="seg" role="group" aria-label="Jenis slide">
-                    {(Object.keys(TYPE_LABEL) as SlideType[]).map((t) => (
-                      <button key={t} type="button" className={cur.type === t ? 'on' : ''} aria-pressed={cur.type === t}
-                        onClick={() => upd(sel, t === 'roster' && !cur.date ? { type: t, date: newSlide('roster').date, title: cur.title || 'Petugas Kebaktian' } : { type: t })}>
-                        {TYPE_LABEL[t]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 {cur.type === 'text' && (
                   <>
-                    <div className="field"><Label htmlFor="s-title">Judul</Label><Input id="s-title" value={cur.title} onChange={(e) => upd(sel, { title: e.target.value })} /></div>
-                    <div className="field"><Label htmlFor="s-body">Isi</Label><Textarea id="s-body" className="min-h-28" value={cur.body} onChange={(e) => upd(sel, { body: e.target.value })} /></div>
+                    <div className="field"><Label htmlFor="s-title">Judul</Label><Textarea id="s-title" rows={1} className="min-h-[46px] resize-none" value={cur.title} onChange={(e) => upd(sel, { title: e.target.value })} /></div>
+                    <div className="field"><Label htmlFor="s-body">Isi</Label><Textarea id="s-body" className="min-h-28 resize-none" value={cur.body} onChange={(e) => upd(sel, { body: e.target.value })} /></div>
                   </>
                 )}
 
@@ -206,11 +227,13 @@ function Editor({ id }: { id: string }) {
 
                 {cur.type === 'roster' && (
                   <>
-                    <div className="grid2">
-                      <div className="field"><Label htmlFor="r-title">Judul slide</Label><Input id="r-title" value={cur.title} onChange={(e) => upd(sel, { title: e.target.value })} /></div>
-                      <div className="field"><Label htmlFor="r-date">Tanggal kebaktian</Label><Input id="r-date" type="date" value={cur.date || ''} onChange={(e) => upd(sel, { date: e.target.value, roster: null })} /></div>
+                    <div className="flex min-w-0 flex-col gap-4">
+                      <div className="field"><Label htmlFor="r-title">Judul slide</Label><Textarea id="r-title" rows={1} className="min-h-[46px] resize-none" value={cur.title} onChange={(e) => upd(sel, { title: e.target.value })} placeholder="Judul slide petugas" /></div>
+                      <div className="field"><Label htmlFor="r-date">Tanggal kebaktian</Label><Input id="r-date" type="date" fieldSize="md" value={cur.date || ''} onChange={(e) => upd(sel, { date: e.target.value, roster: null })} /></div>
                     </div>
-                    {found === undefined && <p className="muted">Mencari data petugas…</p>}
+                    {rosterError && <Alert variant="destructive"><AlertDescription>{rosterError}</AlertDescription></Alert>}
+                    {!rosterDate && <p className="muted">Pilih tanggal kebaktian terlebih dahulu.</p>}
+                    {rosterDate && !rosterError && found === undefined && <p className="muted">Mencari data petugas…</p>}
                     {found && (
                       <Alert variant="success">
                         <AlertDescription>
@@ -222,7 +245,26 @@ function Editor({ id }: { id: string }) {
                       </Alert>
                     )}
                     {found === null && cur.date && (
-                      <Alert variant="destructive"><AlertDescription><span>Belum ada data petugas untuk {longDate(cur.date)}. <Link href="/petugas" className="underline">Isi di halaman Petugas</Link>, lalu kembali dan pilih ulang tanggalnya.</span></AlertDescription></Alert>
+                      <form onSubmit={saveRoster} className="flex flex-col gap-3">
+                        <p className="text-sm text-muted-foreground">Belum ada petugas untuk {longDate(cur.date)}. Isi data berikut untuk menyimpannya dan menambahkannya ke slide.</p>
+                        {([
+                          ['mc', 'Pembawa Acara'],
+                          ['jiangdao', 'Jiang Dao (Pengkhotbah)'],
+                          ['scripture', 'Pembaca Ayat Suci'],
+                        ] as const).map(([key, label]) => (
+                          <div className="field" key={key}>
+                            <Label htmlFor={`roster-${key}`}>{label}</Label>
+                            <Input id={`roster-${key}`} value={rosterForm[key]} onChange={(e) => setRosterForm((f) => ({ ...f, [key]: e.target.value }))} required />
+                          </div>
+                        ))}
+                        {rosterForm.prayers.map((prayer, i) => (
+                          <div className="field" key={i}>
+                            <Label htmlFor={`roster-prayer-${i}`}>Doa {i + 1}</Label>
+                            <Input id={`roster-prayer-${i}`} value={prayer} onChange={(e) => setRosterForm((f) => ({ ...f, prayers: f.prayers.map((p, j) => j === i ? e.target.value : p) }))} required />
+                          </div>
+                        ))}
+                        <Button type="submit" size="sm" disabled={savingRoster}>{savingRoster ? 'Menyimpan…' : 'Simpan dan tambahkan petugas'}</Button>
+                      </form>
                     )}
                   </>
                 )}
@@ -271,12 +313,6 @@ function Editor({ id }: { id: string }) {
               </div>
             </div>
           ))}
-          <div className="grid grid-cols-2 gap-1.5 max-[900px]:w-52 max-[900px]:shrink-0">
-            <Button variant="outline" size="xs" onClick={() => add('text')}>+ Teks</Button>
-            <Button variant="outline" size="xs" onClick={() => add('youtube')}>+ Video</Button>
-            <Button variant="outline" size="xs" onClick={() => add('roster')}>+ Petugas</Button>
-            <Button variant="outline" size="xs" onClick={() => setPicker(true)}>+ Ayat</Button>
-          </div>
           <p className="muted m-0 px-1 text-xs max-[900px]:w-40 max-[900px]:shrink-0">Seret thumbnail untuk mengubah urutan.</p>
         </aside>
       </div>
