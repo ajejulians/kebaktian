@@ -41,9 +41,12 @@ export default function Register() {
       footer={<>Sudah punya akun? <Link href="/login" className="font-semibold">Masuk</Link></>}
     >
       <form onSubmit={submit} className="flex flex-col gap-[22px]">
-        <Field label="Nama" htmlFor="name" labelClassName="text-[13px]">
+        <Field label="Nama lengkap" htmlFor="name" labelClassName="text-[13px]">
           <IconInput id="name" name="name" icon={UserRound} placeholder="Nama lengkap" required autoComplete="name" />
         </Field>
+        <Field label="Tanggal lahir" htmlFor="birth_date"><input className="w-full rounded-md border px-3 py-2" id="birth_date" name="birth_date" type="date" max={new Date().toISOString().slice(0, 10)} required /></Field>
+        <Field label="Domisili" htmlFor="domicile"><input className="w-full rounded-md border px-3 py-2" id="domicile" name="domicile" required /></Field>
+        <Field label="Asal Pakin/Makin" htmlFor="pakin_makin"><input className="w-full rounded-md border px-3 py-2" id="pakin_makin" name="pakin_makin" required /></Field>
         <Field label="Email" htmlFor="email" labelClassName="text-[13px]">
           <IconInput id="email" name="email" type="email" icon={Mail} placeholder="nama@email.com" required autoComplete="email" />
         </Field>

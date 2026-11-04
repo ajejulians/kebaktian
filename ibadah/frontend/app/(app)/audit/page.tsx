@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import PageHeader from '@/components/PageHeader';
 import { Panel, PanelFooter, PanelHeader, StatusPill } from '@/components/Panel';
@@ -31,7 +30,7 @@ function Log() {
       <Panel>
         <PanelHeader
           title="Riwayat aktivitas"
-          description="Menampilkan hingga 200 catatan terakhir. Pilih baris untuk melihat perubahan."
+          description="Menampilkan hingga 200 catatan terakhir. Informasi isi workspace tidak ditampilkan."
           aside={
             <Select value={entity} onValueChange={setEntity}>
               <SelectTrigger className="h-10 w-full rounded-[5px] bg-card text-xs sm:w-[190px]" aria-label="Jenis data"><SelectValue /></SelectTrigger>
@@ -48,22 +47,18 @@ function Log() {
         </div>
         {!rows && [0, 1, 2].map((n) => <div key={n} className="border-t px-6 py-4"><Skeleton className="h-8" /></div>)}
         {shown.map((r) => (
-          <details key={r.id} className="group border-t">
-            <summary className={`grid cursor-pointer list-none items-center gap-x-[18px] gap-y-1.5 px-5 py-4 transition-colors outline-none hover:bg-[#F7F9FA] focus-visible:bg-[#F7F9FA] focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset sm:px-6 [&::-webkit-details-marker]:hidden ${COLS}`}>
+          <div key={r.id} className="group border-t">
+            <div className={`grid cursor-pointer list-none items-center gap-x-[18px] gap-y-1.5 px-5 py-4 transition-colors outline-none hover:bg-[#F7F9FA] focus-visible:bg-[#F7F9FA] focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset sm:px-6 [&::-webkit-details-marker]:hidden ${COLS}`}>
               <StatusPill tone={TONE[r.action] ?? 'muted'}>{r.action}</StatusPill>
               <span className="text-xs text-fg-2">{r.entity}</span>
               <span className="truncate text-xs text-[#5E7281]">{r.actor}</span>
               <span className="text-xs text-[#5E7281] tabular-nums">{when(r.at)}</span>
-              <ChevronRight aria-hidden className="size-4 text-[#8C9DA8] transition-transform group-open:rotate-90 max-md:hidden" />
-            </summary>
-            <div className="ba px-5 pb-5 sm:px-6">
-              <div><p className="mb-1 text-xs text-muted-foreground">Sebelum</p><pre>{JSON.stringify(r.before, null, 2)}</pre></div>
-              <div><p className="mb-1 text-xs text-muted-foreground">Sesudah</p><pre>{JSON.stringify(r.after, null, 2)}</pre></div>
+
             </div>
-          </details>
+          </div>
         ))}
         {rows && !shown.length && <div className="border-t p-6"><div className="empty">Belum ada catatan.</div></div>}
-        <PanelFooter><span>Menampilkan {shown.length} catatan terbaru</span><span>Pilih catatan untuk melihat data sebelum dan sesudah</span></PanelFooter>
+        <PanelFooter><span>Menampilkan {shown.length} catatan terbaru</span></PanelFooter>
       </Panel>
     </div>
   );

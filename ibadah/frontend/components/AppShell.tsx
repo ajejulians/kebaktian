@@ -14,7 +14,7 @@ export const useMe = () => useContext(MeCtx);
 export default function AppShell({ children, bare }: { children: ReactNode; bare?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
-  const adminOnly = pathname.startsWith('/admin') || pathname.startsWith('/audit');
+  const adminOnly = (pathname.startsWith('/admin') && !pathname.startsWith('/admin/umat')) || pathname.startsWith('/audit');
   const [me, setMe] = useState<Profile | { offline: true } | null>(null);
 
   // Cek sesi hanya sekali selama shell hidup; pindah halaman tidak memicu pemeriksaan ulang.
@@ -41,7 +41,7 @@ export default function AppShell({ children, bare }: { children: ReactNode; bare
     return () => sub.subscription.unsubscribe();
   }, [router]);
 
-  const denied = !!me && !('offline' in me) && adminOnly && me.role !== 'admin';
+  const denied = !!me && !('offline' in me) && adminOnly && me.role !== 'superadmin';
   useEffect(() => { if (denied) router.replace('/dashboard'); }, [denied, router]);
 
   if (!me) return <p className="muted" style={{ padding: 24 }} role="status">Memuat…</p>;
@@ -60,19 +60,20 @@ export default function AppShell({ children, bare }: { children: ReactNode; bare
             <NavItem href="/petugas" icon={UsersRound}>Petugas</NavItem>
             <NavItem href="/slides" icon={Presentation}>Slideshow</NavItem>
             <NavItem href="/absensi" icon={ClipboardCheck}>Absensi</NavItem>
+            <NavItem href="/admin/umat" icon={Heart}>Umat</NavItem>
             <NavItem href="/kitab" icon={BookOpen}>Kitab</NavItem>
           </NavGroup>
-          {me.role === 'admin' && (
+          {me.role === 'superadmin' && (
             <NavGroup label="Administrasi">
               <NavItem href="/admin/users" icon={Users}>User</NavItem>
-              <NavItem href="/admin/umat" icon={Heart}>Umat</NavItem>
+              <NavItem href="/admin/informasi" icon={FileText}>Informasi</NavItem>
               <NavItem href="/audit" icon={FileText}>Audit</NavItem>
             </NavGroup>
           )}
         </div>
         <SidebarUser
           name={me.name}
-          role={me.role === 'admin' ? 'Administrator' : 'Pelayan'}
+          role={me.role === 'superadmin' ? 'Superadmin' : 'Pengurus'}
           onLogout={async () => { await supabase.auth.signOut(); router.replace('/login'); }}
         />
       </Sidebar>

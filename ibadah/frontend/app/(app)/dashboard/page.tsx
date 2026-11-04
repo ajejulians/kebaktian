@@ -8,7 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import { Panel } from '@/components/Panel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { longDate, nextSunday, thisSunday } from '@/lib/slides';
-import type { Assignment, AuditRow, Mark, SlideshowSummary, Umat } from '@/lib/types';
+import type { Announcement, Assignment, AuditRow, Mark, Profile, SlideshowSummary, Umat } from '@/lib/types';
 
 const ENTITY: Record<string, string> = { user: 'User', umat: 'Data umat', absensi: 'Kehadiran', assignment: 'Petugas', slideshow: 'Slideshow' };
 const ACTION: Record<string, string> = {
@@ -43,9 +43,11 @@ function Quick({ href, icon: Icon, title, text }: { href: string; icon: LucideIc
 
 export default function Dashboard() {
   const me = useMe();
-  const isAdmin = me?.role === 'admin';
+  const isAdmin = me?.role === 'superadmin';
   const upcoming = nextSunday();
   const last = thisSunday();
+  const [users, setUsers] = useState<Profile[] | null>(null);
+  const [news, setNews] = useState<Announcement[]>([]);
   const [umat, setUmat] = useState<Umat[] | null>(null);
   const [marks, setMarks] = useState<Mark[] | null>(null);
   const [shows, setShows] = useState<SlideshowSummary[] | null>(null);
@@ -53,12 +55,13 @@ export default function Dashboard() {
   const [log, setLog] = useState<AuditRow[] | null>(null);
 
   useEffect(() => {
+    api<Announcement[]>('/api/announcements').then(setNews).catch(() => setNews([]));
     api<Umat[]>('/api/umat').then(setUmat).catch(() => setUmat([]));
     api<Mark[]>(`/api/absensi?week=${last}`).then(setMarks).catch(() => setMarks([]));
     api<SlideshowSummary[]>('/api/slideshows').then(setShows).catch(() => setShows([]));
     api<Assignment | null>(`/api/assignments?week=${upcoming}`).then(setPlan).catch(() => setPlan(null));
   }, [last, upcoming]);
-  useEffect(() => { if (isAdmin) api<AuditRow[]>('/api/audit').then(setLog).catch(() => setLog([])); }, [isAdmin]);
+  useEffect(() => { if (isAdmin) { api<Profile[]>('/api/users').then(setUsers).catch(() => setUsers([])); api<AuditRow[]>('/api/audit').then(setLog).catch(() => setLog([])); } }, [isAdmin]);
 
   const first = me?.name?.split(' ')[0] ?? '';
   const num = (v: number | undefined | null) => (v == null ? <Skeleton className="h-7 w-12" /> : v);
@@ -71,6 +74,8 @@ export default function Dashboard() {
         description="Ringkasan pelayanan dan persiapan kebaktian Anda."
       />
 
+      {isAdmin && <Panel className="p-5"><h2 className="font-bold">Dashboard superadmin</h2><p className="mt-2 text-sm">{users ? `${users.length} pengguna · ${users.filter(u => u.status === 'pending').length} pengajuan menunggu` : 'Memuat pengguna…'}</p><div className="mt-3 flex gap-4 text-sm"><Link href="/admin/users">Kelola pengguna</Link><Link href="/admin/informasi">Kelola informasi</Link></div></Panel>}
+      <Panel className="p-5"><h2 className="font-bold">Informasi</h2>{news.length ? news.map(item => <article key={item.id} className="mt-4 border-t pt-3"><h3 className="font-semibold">{item.title}</h3><p className="mt-1 whitespace-pre-wrap text-sm">{item.body}</p></article>) : <p className="mt-2 text-sm text-muted-foreground">Belum ada informasi.</p>}</Panel>
       <section aria-label="Kebaktian berikutnya" className="flex flex-wrap items-center justify-between gap-4 rounded-[9px] bg-navy-dark px-6 py-6 sm:px-7">
         <div className="flex flex-col gap-[9px]">
           <span className="text-[10px] font-bold tracking-[0.1em] text-gold-on-navy">KEBAKTIAN BERIKUTNYA</span>

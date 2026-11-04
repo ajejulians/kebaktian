@@ -121,7 +121,7 @@ function Attendance() {
             </div>
             <p className="text-xs text-muted-foreground">{pct}% umat aktif hadir</p>
           </Panel>
-          {me?.role === 'admin' && <RekapCard umat={umat ?? []} />}
+          <RekapCard umat={umat ?? []} />
         </aside>
       </div>
     </div>

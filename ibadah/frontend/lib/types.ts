@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'user';
+export type Role = 'superadmin' | 'pengurus';
 export type Status = 'pending' | 'active' | 'blocked';
 
 export interface Profile {
@@ -7,6 +7,9 @@ export interface Profile {
   name: string;
   role: Role;
   status: Status;
+  birth_date: string | null;
+  domicile: string | null;
+  pakin_makin: string | null;
   created_at: string;
 }
 
@@ -63,3 +66,5 @@ export interface ImportRow { nama: string; telepon: string; alamat: string }
 export interface ImportResult { created: number; duplicates: number; invalid: { baris: number; alasan: string }[] }
 
 export interface Msg { ok?: string; err?: string }
+
+export interface Announcement { id: string; title: string; body: string; published: boolean; created_at: string; updated_at: string }

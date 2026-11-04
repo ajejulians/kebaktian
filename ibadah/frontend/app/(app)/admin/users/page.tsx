@@ -26,8 +26,8 @@ function RoleSelect(props: { name?: string; value?: string; defaultValue?: strin
     <Select {...rest}>
       <SelectTrigger id={id} className="h-[43px] w-full rounded-[5px] bg-card"><SelectValue /></SelectTrigger>
       <SelectContent>
-        <SelectItem value="user">user</SelectItem>
-        <SelectItem value="admin">admin</SelectItem>
+        <SelectItem value="pengurus">Pengurus</SelectItem>
+        <SelectItem value="superadmin">Superadmin</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -85,9 +85,9 @@ function Users() {
           {!users && [0, 1, 2].map((n) => <div key={n} className="border-t px-6 py-4"><Skeleton className="h-12" /></div>)}
           {shown.map((u) => (
             <div key={u.id} className="flex flex-wrap items-center gap-x-3.5 gap-y-3 border-t px-5 py-4 sm:px-6">
-              <Avatar name={u.name} tone={u.role === 'admin' ? 'gold' : 'slate'} />
+              <Avatar name={u.name} tone={u.role === 'superadmin' ? 'gold' : 'slate'} />
               <div className="flex min-w-44 flex-1 flex-col gap-[5px]">
-                <div className="flex items-center gap-2"><strong className="text-[13px] font-bold">{u.name}</strong><span className="text-[11px] text-muted-foreground capitalize">{u.role}</span></div>
+                <div className="flex items-center gap-2"><strong className="text-[13px] font-bold">{u.name}</strong><span className="text-[11px] text-muted-foreground capitalize">{u.role === 'superadmin' ? 'Superadmin' : 'Pengurus'}</span></div>
                 <span className="text-[11px] break-all text-muted-foreground">{u.email}</span>
               </div>
               <StatusPill tone={STATUS[u.status][1]}>{STATUS[u.status][0]}</StatusPill>
@@ -111,12 +111,13 @@ function Users() {
           {detail && (
             <Panel className="border-gold p-6">
               <div className="flex items-start gap-3">
-                <Avatar name={detail.name} tone={detail.role === 'admin' ? 'gold' : 'slate'} />
+                <Avatar name={detail.name} tone={detail.role === 'superadmin' ? 'gold' : 'slate'} />
                 <div className="flex min-w-0 flex-1 flex-col gap-1"><h2 className="m-0 truncate text-[15px] font-bold">{detail.name}</h2><span className="text-xs break-all text-muted-foreground">{detail.email}</span></div>
                 <Button variant="ghost" size="icon-sm" aria-label="Tutup" onClick={() => setDetail(null)}><X /></Button>
               </div>
               <div className="mt-4 flex flex-col gap-4">
                 <p className="text-xs text-muted-foreground">Terdaftar {fmt(detail.created_at)} · Login terakhir {detail.last_sign_in_at ? fmt(detail.last_sign_in_at) : 'belum pernah'}</p>
+                <div className="text-xs text-muted-foreground">Tanggal lahir: {detail.birth_date || '—'}<br />Domisili: {detail.domicile || '—'}<br />Asal Pakin/Makin: {detail.pakin_makin || '—'}</div>
                 <Field label="Role" htmlFor="detail-role" className="max-w-44">
                   <RoleSelect id="detail-role" value={detail.role} disabled={detail.status === 'pending'}
                     onValueChange={(v) => patch(detail, { role: v }, 'Role diubah').then(() => view(detail))} />
@@ -147,7 +148,7 @@ function Users() {
                   }
                 />
               </Field>
-              <Field label="Role" htmlFor="nu-role"><RoleSelect id="nu-role" name="role" defaultValue="user" /></Field>
+              <Field label="Role" htmlFor="nu-role"><RoleSelect id="nu-role" name="role" defaultValue="pengurus" /></Field>
               <Button size="md" className="w-full"><Plus />Tambah user</Button>
             </form>
           </Panel>

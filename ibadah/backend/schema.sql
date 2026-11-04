@@ -7,6 +7,7 @@ create table if not exists assignments (
   scripture text not null,
   jiangdao text not null,
   created_by text not null,
+  owner_id uuid references auth.users(id),
   created_at timestamptz not null default now()
 );
 create index if not exists assignments_week_idx on assignments (week_date, created_at desc);
@@ -16,6 +17,7 @@ create table if not exists slideshows (
   title text not null,
   slides jsonb not null default '[]',
   updated_by text not null,
+  owner_id uuid references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -41,11 +43,24 @@ create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null unique,
   name text not null,
-  role text not null default 'user' check (role in ('admin','user')),
+  birth_date date,
+  domicile text,
+  pakin_makin text,
+  role text not null default 'pengurus' check (role in ('superadmin','pengurus')),
   status text not null default 'pending' check (status in ('pending','active','blocked')),
   created_at timestamptz not null default now()
 );
 alter table profiles enable row level security;
+
+create table if not exists announcements (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  body text not null,
+  published boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table announcements enable row level security;
 
 -- ---- Ayat (Si Shu). Isi datanya dengan: npm run import-ayat ----
 create table if not exists ayat_bab (
@@ -79,6 +94,7 @@ create table if not exists umat (
   alamat text,
   aktif boolean not null default true,
   created_by text not null,
+  owner_id uuid references auth.users(id),
   created_at timestamptz not null default now()
 );
 create index if not exists umat_nama_idx on umat (nama);
@@ -89,6 +105,7 @@ create table if not exists absensi (
   week_date date not null,
   umat_id uuid not null references umat(id),
   marked_by text not null,
+  owner_id uuid references auth.users(id),
   marked_at timestamptz not null default now(),
   unique (week_date, umat_id)
 );
